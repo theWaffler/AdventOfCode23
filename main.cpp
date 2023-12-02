@@ -3,6 +3,9 @@
 #include <string>
 #include <vector>
 #include <algorithm>
+#include <map>
+#include <cctype>
+#include <sstream>
 
 //Day 1 of Avant of Code 2023
 /*--- Day 1: Trebuchet?! ---
@@ -30,6 +33,29 @@ Consider your entire calibration document. What is the sum of all of the calibra
 */
 using namespace std;
 
+map<string, int> makeNumMap() {
+    return {
+        {"one", 1},
+        {"two", 2},
+        {"three", 3},
+        {"four", 4},
+        {"five", 5},
+        {"six", 6},
+        {"seven", 7},
+        {"sseven", 7},
+        {"eight", 8},
+        {"nine", 9},
+    };
+}
+
+int convertToDigit(const string& s, const map<string, int>& numberMap) {
+    if (s.empty()) return 0;
+    if (isdigit(s[0])) return s[0] - '0';
+    auto it = numberMap.find(s);
+    if (it != numberMap.end()) return it->second;
+    return 0;
+}
+
 bool openFile(string& filePath, ifstream& fin) {
     fin.open(filePath);
     if (!fin.is_open()){
@@ -38,22 +64,53 @@ bool openFile(string& filePath, ifstream& fin) {
     } else return true;
 }
 
-void extractCalibrationValues(ifstream& fileStream, vector<int>& values) {
+//ughhhh
+void extractCalibrationValues(ifstream& fileStream, vector<int>& values, const map<string, int>& numberMap) {
     string line;
     while (getline(fileStream, line)) {
-        char firstDigit = 0, lastDigit = 0;
-        for (char ch : line) {
-            if (isdigit(ch)) {
-                if (firstDigit == 0) {
-                    firstDigit = ch;
+        int firstDigit = 0, lastDigit = 0;
+        string temp;
+
+        // Process the line for the first digit or spelled-out number
+        for (size_t i = 0; i < line.length(); ++i) {
+            char ch = tolower(line[i]);
+            if (isalpha(ch) || isdigit(ch)) {
+                temp += ch;
+                auto it = numberMap.find(temp);
+                if (it != numberMap.end()) {
+                    firstDigit = it->second;
                 }
-                lastDigit = ch;
+            } else {
+                temp.clear();
+            }
+            if (firstDigit != 0) {
+                break;
             }
         }
-        if (firstDigit != 0 && lastDigit != 0) {
-            int value = (firstDigit - '0') * 10 + (lastDigit - '0');
-            values.push_back(value);
+        temp.clear(); // Reset temp to find the last digit or spelled-out number
+
+        // Process the line backwards for the last digit or spelled-out number
+        for (int i = static_cast<int>(line.length()) - 1; i >= 0; --i) {
+            char ch = tolower(line[i]);
+            if (isalpha(ch) || isdigit(ch)) {
+                temp = ch + temp;
+                auto it = numberMap.find(temp);
+                if (it != numberMap.end()) {
+                    lastDigit = it->second;
+                    break;
+                }
+            } else {
+                temp.clear();
+            }
         }
+
+        if (firstDigit != 0 && lastDigit != 0) {
+            values.push_back(firstDigit * 10 + lastDigit);
+        }
+        // Debugging output
+        cout << " line: " << line << endl;
+        cout << "first digit: " << firstDigit << ", last digit: " << lastDigit << endl;
+        cout << "combined: " << (firstDigit * 10 + lastDigit) << endl;
     }
 }
 
@@ -63,8 +120,10 @@ int main() {
     vector<int> calibrationVal;
     int sum = 0;
 
+    map<string, int> numberMap = makeNumMap();
+
     if (openFile(filePath, file)) {
-        extractCalibrationValues(file, calibrationVal);
+        extractCalibrationValues(file, calibrationVal, numberMap);
         file.close();
     }
     for (int value : calibrationVal) {
